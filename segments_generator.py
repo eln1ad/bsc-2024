@@ -21,7 +21,7 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
         
     def frames_label_generator():   
         df = pd.read_csv(csv_file, index_col=None)
-        label_list = list(df["label"].unique())
+        label_list = sorted(list(df["label"].unique())) # a sorted kell rá
           
         if shuffle:
             df = df.sample(frac=1).reset_index(drop=True)
@@ -32,14 +32,20 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
             label = row[-2]
             
             video_dir = Path(video_frames_dir).joinpath(video_name)
+            
             array_files = os_sorted(video_dir.rglob("*.npy"))
             array_files = array_files[seg_start : seg_end]
             
             frames = []
             
             for array_file in array_files:
-                frame = np.load(array_file).astype(float)
-                frame /= 255
+                frame = np.load(array_file).astype(np.float32)
+                
+                # if the frame is RGB then normalization is needed
+                # if the frame is FLOW then the values are correct
+                if frame.shape[-1] == 3:
+                    frame /= 255
+                
                 frames.append(frame)
                 
             frames = np.array(frames)

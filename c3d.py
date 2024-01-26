@@ -65,12 +65,12 @@ def c3d():
     pool_4 = MaxPool3D(pool_size=config["pool-rest-size"])(relu_4_b)
     
     flatten = Flatten()(pool_4)
-    dropout_1 = Dropout(config["dropout-pct"])(flatten)
     
+    dropout_1 = Dropout(config["dropout-pct"])(flatten)
     fc_6 = Dense(config["linear-units"], name="fc_6")(dropout_1)
     relu_6 = ReLU(name="relu_fc_6")(fc_6)
-    dropout_2 = Dropout(config["dropout-pct"])(relu_6)
     
+    dropout_2 = Dropout(config["dropout-pct"])(relu_6)
     fc_7 = Dense(config["linear-units"], name="fc_7")(dropout_2)
     relu_7 = ReLU(name="relu_fc_7")(fc_7)
     

@@ -6,7 +6,7 @@ from segments_generator import get_frames_label_generator
 from c3d import c3d
 
 
-EPOCHS = 100
+EPOCHS = 50
 
 
 c3d_checkpoint_dir = Path.cwd().joinpath("c3d_checkpoint")
