@@ -91,7 +91,7 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
 if __name__ == "__main__":
     generator = get_frames_label_generator(
         "train_segments_size_8_stride_1.csv", 
-        "/media/elniad/4tb_hdd/boxing-frames/flow",
+        "/media/elniad/4tb_hdd/datasets/boxing/frames/flow",
         num_frames=8, shuffle=True
     )
     

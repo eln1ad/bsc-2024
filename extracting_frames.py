@@ -54,15 +54,15 @@ def extract_frames(videos_dir, output_dir, frame_size = None, modality = "rgb"):
                 
 if __name__ == "__main__":
     extract_frames(
-        videos_dir="/home/elniad/Desktop/boxing-dataset/raw_videos",
-        output_dir="/media/elniad/4tb_hdd/boxing-frames/rgb",
+        videos_dir="/home/elniad/datasets/boxing/videos",
+        output_dir="/media/elniad/4tb_hdd/datasets/boxing/frames/rgb",
         frame_size=(112, 112),
         modality="rgb"
     )
     
     extract_frames(
-        videos_dir="/home/elniad/Desktop/boxing-dataset/raw_videos",
-        output_dir="/media/elniad/4tb_hdd/boxing-frames/flow",
+        videos_dir="/home/elniad/datasets/boxing/videos",
+        output_dir="/media/elniad/4tb_hdd/datasets/boxing/frames/flow",
         frame_size=(112, 112),
         modality="flow"
     )

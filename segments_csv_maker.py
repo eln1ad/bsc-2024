@@ -95,7 +95,7 @@ def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.1
 
 if __name__ == "__main__":
     make_csvs(
-        "/home/elniad/boxing-videos/",
+        "/home/elniad/datasets/boxing/videos",
         segment_size=8,
         segment_stride=1,
     )

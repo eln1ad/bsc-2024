@@ -50,7 +50,7 @@ elif config["color-channels"] == 3:
 else:
     raise ValueError("'color-channels' must be either 2 or 3!")
 
-video_frames_dir = f"/media/elniad/4tb_hdd/boxing-frames/{modality}"
+video_frames_dir = f"/media/elniad/4tb_hdd/datasets/boxing/frames/{modality}"
 
 model_version = f"C3D_{modality}_{config['capacity']}_frames_{config['epochs']}_epochs"
 model_save_path = saved_models_dir.joinpath(model_version)
