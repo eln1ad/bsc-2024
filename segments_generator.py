@@ -1,8 +1,25 @@
+import cv2
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from natsort import os_sorted # Ez nagyon fontos, mert a fileok különben így lesznek sortolva: [1, 10, 11, 12, 2, 20, 21, 22]
+
+
+
+# def preprocess_frame(frame, frame_size):
+#     if (frame_size is not None and 
+#         isinstance(frame_size, tuple) and 
+#         isinstance(frame_size[0], int) and
+#         isinstance(frame_size[1], int)):
+#         frame = cv2.resize(frame, frame_size)
+        
+#     if frame.shape[0] == 3:
+#         frame = frame.astype(np.float32)
+#         frame /= 255
+    
+#     return frame
+
 
 
 # a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
@@ -74,15 +91,36 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
 if __name__ == "__main__":
     generator = get_frames_label_generator(
         "train_segments_size_8_stride_1.csv", 
-        "/media/elniad/4tb_hdd/boxing-frames/rgb",
+        "/media/elniad/4tb_hdd/boxing-frames/flow",
         num_frames=8, shuffle=True
     )
     
-    i = 1
+    possible_labels = sorted(["background", "left_straight", "left_hook", "left_uppercut",
+                      "right_straight", "right_hook", "right_uppercut"])
 
     for frames, label in generator():
         print(frames.shape, label.shape)
-        if i == 5:
-            break
+        label = possible_labels[np.argmax(label)]
+        
+        if frames.shape[-1] == 3:
+            fig, axes = plt.subplots(2, 4, figsize=(12, 6))
+            axes = axes.flatten()
+
+            # Plot each image in its corresponding axis
+            for i, ax in enumerate(axes):
+                ax.imshow(frames[i])  # You would replace this with your actual image data
+                ax.axis('off')  # Turn off axis for cleaner visualization
+            
         else:
-            i += 1
+            fig, axes = plt.subplots(2, 8, figsize=(24, 6))
+            
+            for i in range(8):
+                for j in range(2):
+                    axes[j, i].imshow(frames[i, :, :, j])
+                    axes[j, i].axis("off")
+                    
+        plt.title(label, loc="center")
+        plt.tight_layout()
+        plt.show()
+            
+        break
