@@ -55,6 +55,16 @@ video_frames_dir = f"/media/elniad/4tb_hdd/datasets/boxing/frames/{modality}"
 model_version = f"C3D_{modality}_{config['capacity']}_frames_{config['epochs']}_epochs"
 model_save_path = saved_models_dir.joinpath(model_version)
 
+# gpus = tf.config.list_physical_devices("GPU")
+
+# if len(gpus):
+#     print("Found GPU!")
+#     print(gpus)
+    
+#     # ezt amiatt raktam ide, hogy egy warningot eltüntessek
+#     for gpu in gpus:
+#         tf.config.experimental.set_memory_growth(gpu, True)
+
 train_gen = get_frames_label_generator(
     train_csv, video_frames_dir, 
     num_frames=config["capacity"], 
@@ -81,16 +91,16 @@ val_dset = tf.data.Dataset.from_generator(
     val_gen, 
     output_signature=output_signature
 ).batch(config["batch-size"], drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-
-model = c3d()
-model.summary()
-
+        
 if config["optimizer"] in ["SGD", "sgd"]:
     optimizer = SGD(learning_rate=config["learning-rate"])
 elif config["optimizer"] in ["Adam", "adam"]:
     optimizer = Adam(learning_rate=config["learning-rate"])
 else:
     raise ValueError(f"Unknown optimizer inside config file!")   
+
+model = c3d()
+model.summary()
     
 loss = CategoricalCrossentropy()
 metric = CategoricalAccuracy()
@@ -101,7 +111,7 @@ callbacks = [
         patience=10
     ),
     ModelCheckpoint(
-        checkpoints_dir.joinpath(f"checkpoint_{model_version}"),
+        str(checkpoints_dir.joinpath(f"checkpoint_{model_version}")),
         monitor="categorical_accuracy",
         save_best_only=True,
         save_weights_only=False
@@ -124,12 +134,13 @@ model.compile(
     metrics=[metric]
 )
 
-print("Compiled model!")
-
+# forcing tensorflow to train using gpu
+# try these versions:
+# /job:localhost/replica:0/task:0/device:GPU:0
+# /GPU:0
+# with tf.device("/job:localhost/replica:0/task:0/device:GPU:0"):
 history = model.fit(train_dset, validation_data=val_dset,
                     epochs=config["epochs"], callbacks=callbacks)
-
-print("Finished training model!")
 
 tf.keras.models.save_model(model, model_save_path)
 print(f"Saved C3D model to {model_save_path}!")

@@ -12,3 +12,5 @@ figures/*
 
 checkpoints/*
 !checkpoints/.gitkeep
+
+gpu_testing
