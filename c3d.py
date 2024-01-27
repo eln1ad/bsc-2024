@@ -30,9 +30,9 @@ def make_c3d_config_json():
         json.dump(config, f, indent=4)
         
         
-def c3d():
+def C3D():
     
-    config_path = Path.cwd().joinpath("c3d_config.json")
+    config_path = Path.cwd().joinpath("data", "c3d_config.json")
     
     if not config_path.exists():
         raise ValueError("c3d_config.json does not exist!")
@@ -85,5 +85,5 @@ def c3d():
  
 
 if __name__ == "__main__":
-    model = c3d()
+    model = C3D()
     model.summary()

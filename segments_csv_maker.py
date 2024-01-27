@@ -8,15 +8,17 @@ import pandas as pd
 
 COLUMNS = ["video_name", "seg_start", "seg_end", "gt_start", "gt_end", "label", "tiou"]
 
+data_dir = Path.cwd().joinpath("data")
 
-def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.1,
+
+def make_csvs(videos_dir, upper_tiou_threshold = 0.6, lower_tiou_threshold = 0.15,
              segment_size = 16, segment_stride = 1, train_pct = 0.8, rnd_seed = 42):
-    dataset_path = Path.cwd().joinpath("dataset.json")
+    dataset_path = data_dir.joinpath("dataset.json")
     
     if not Path(dataset_path).exists():
         raise ValueError("File dataset.json does not exist!")
     
-    with open("dataset.json", "r") as file:
+    with open(dataset_path, "r") as file:
         dataset = json.load(file)
         
     print("Loaded dataset!")
@@ -88,7 +90,10 @@ def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.1
         full_set["val"].extend(items.iloc[train_count + test_count :].values.tolist())
     
     for set_name, one_set in full_set.items():
-        pd.DataFrame(one_set, columns=COLUMNS).to_csv(f"{set_name}_segments_size_{segment_size}_stride_{segment_stride}.csv", index=None)
+        pd.DataFrame(one_set, columns=COLUMNS).to_csv(
+            data_dir.joinpath(f"{set_name}_segments_size_{segment_size}_stride_{segment_stride}_tiou_high_{upper_tiou_threshold}_tiou_low_{lower_tiou_threshold}.csv"), 
+            index=None
+        )
     
     print("Made csv files!")
 

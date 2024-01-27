@@ -3,7 +3,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from pathlib import Path
 from segments_generator import get_frames_label_generator
-from c3d import c3d
+from c3d import C3D
 from keras.optimizers import SGD, Adam
 from keras.losses import CategoricalCrossentropy
 from keras.metrics import CategoricalAccuracy
@@ -14,9 +14,10 @@ checkpoints_dir = Path.cwd().joinpath("checkpoints")
 saved_models_dir = Path.cwd().joinpath("saved_models")
 figures_dir = Path.cwd().joinpath("figures")
 logs_dir = Path.cwd().joinpath("logs")
+data_dir = Path.cwd().joinpath("data")
 
-train_csv = Path.cwd().joinpath("train_segments_size_8_stride_1.csv")
-val_csv = Path.cwd().joinpath("val_segments_size_8_stride_1.csv")
+train_csv = data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv")
+val_csv = data_dir.joinpath("val_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv")
 
 if not checkpoints_dir.exists():
     print("checkpoints directory does not exist, creating it now!")
@@ -40,7 +41,7 @@ if not train_csv.exists():
 if not val_csv.exists():
     raise ValueError("The file 'val_csv' points to does not exist!")
     
-with open("c3d_config.json", "r") as file:
+with open(data_dir.joinpath("c3d_config.json"), "r") as file:
     config = json.load(file)
     
 if config["color-channels"] == 2:
@@ -50,20 +51,12 @@ elif config["color-channels"] == 3:
 else:
     raise ValueError("'color-channels' must be either 2 or 3!")
 
-video_frames_dir = f"/media/elniad/4tb_hdd/datasets/boxing/frames/{modality}"
+# video_frames_dir = f"/media/elniad/4tb_hdd/datasets/boxing/frames/{modality}"
+# reading from HDD was slow, so I am trying SSD (it is also slow)
+video_frames_dir = f"/home/elniad/datasets/boxing/frames/{modality}"
 
 model_version = f"C3D_{modality}_{config['capacity']}_frames_{config['epochs']}_epochs"
 model_save_path = saved_models_dir.joinpath(model_version)
-
-# gpus = tf.config.list_physical_devices("GPU")
-
-# if len(gpus):
-#     print("Found GPU!")
-#     print(gpus)
-    
-#     # ezt amiatt raktam ide, hogy egy warningot eltüntessek
-#     for gpu in gpus:
-#         tf.config.experimental.set_memory_growth(gpu, True)
 
 train_gen = get_frames_label_generator(
     train_csv, video_frames_dir, 
@@ -99,7 +92,7 @@ elif config["optimizer"] in ["Adam", "adam"]:
 else:
     raise ValueError(f"Unknown optimizer inside config file!")   
 
-model = c3d()
+model = C3D()
 model.summary()
     
 loss = CategoricalCrossentropy()
@@ -134,11 +127,6 @@ model.compile(
     metrics=[metric]
 )
 
-# forcing tensorflow to train using gpu
-# try these versions:
-# /job:localhost/replica:0/task:0/device:GPU:0
-# /GPU:0
-# with tf.device("/job:localhost/replica:0/task:0/device:GPU:0"):
 history = model.fit(train_dset, validation_data=val_dset,
                     epochs=config["epochs"], callbacks=callbacks)
 

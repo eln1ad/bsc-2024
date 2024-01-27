@@ -6,22 +6,6 @@ from pathlib import Path
 from natsort import os_sorted # Ez nagyon fontos, mert a fileok különben így lesznek sortolva: [1, 10, 11, 12, 2, 20, 21, 22]
 
 
-
-# def preprocess_frame(frame, frame_size):
-#     if (frame_size is not None and 
-#         isinstance(frame_size, tuple) and 
-#         isinstance(frame_size[0], int) and
-#         isinstance(frame_size[1], int)):
-#         frame = cv2.resize(frame, frame_size)
-        
-#     if frame.shape[0] == 3:
-#         frame = frame.astype(np.float32)
-#         frame /= 255
-    
-#     return frame
-
-
-
 # a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
 def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuffle=True):
     if not Path(csv_file).exists():
@@ -89,9 +73,12 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
     
         
 if __name__ == "__main__":
+    data_dir = Path.cwd().joinpath("data")
+    
+    
     generator = get_frames_label_generator(
-        "train_segments_size_8_stride_1.csv", 
-        "/media/elniad/4tb_hdd/datasets/boxing/frames/flow",
+        data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv"), 
+        "/home/elniad/datasets/boxing/frames/rgb",
         num_frames=8, shuffle=True
     )
     
