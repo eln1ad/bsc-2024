@@ -12,7 +12,7 @@ data_dir = Path.cwd().joinpath("data")
 
 
 def make_csvs(videos_dir, upper_tiou_threshold = 0.6, lower_tiou_threshold = 0.15,
-             segment_size = 16, segment_stride = 1, train_pct = 0.8, rnd_seed = 42):
+             segment_size = 8, segment_stride = 1, train_pct = 0.8, rnd_seed = 42):
     dataset_path = data_dir.joinpath("dataset.json")
     
     if not Path(dataset_path).exists():

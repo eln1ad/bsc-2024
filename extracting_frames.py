@@ -1,6 +1,7 @@
 import numpy as np
 from pathlib import Path
 from video import Video
+import cv2
 
 
 VALID_MODALITIES = ["rgb", "flow"]
@@ -19,36 +20,73 @@ def extract_frames(videos_dir, output_dir, frame_size = None, modality = "rgb"):
         print("'output_dir' does not exist, creating it now!")
         Path(output_dir).mkdir(parents=True)
         
-    if modality.lower() not in VALID_MODALITIES:
+    modality = modality.lower()
+        
+    if modality not in VALID_MODALITIES:
         raise ValueError("Parameter 'modality' can only be rgb or flow")
         
     for video_path in video_path_list:
-        video = Video(str(video_path))
+        print(f"Opening {video_path.name} for processing!")
+        
+        cap = cv2.VideoCapture(str(video_path))
         video_name = video_path.stem
+        num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
-        if modality.lower() == "rgb":
-            frames = video.read_frames(frame_size=frame_size, color_format="rgb")
-        else:
-            frames = video.read_optical_flows(frame_size=frame_size)
-            
-        output_video_dir = Path(output_dir).joinpath(video_name)
+        out_video_dir = Path(output_dir).joinpath(video_name)
         
-        if not output_video_dir.exists():
-            print(f"{output_video_dir} does not exist, creating it now!")
-            output_video_dir.mkdir()
-            
-        for i, frame in enumerate(frames):
-            frame_path = output_video_dir.joinpath(f"{i}.npy")
-            
-            if not frame_path.exists():
-                np.save(frame_path, frame)
-                print(f"Saved frame to {frame_path}!")
+        if out_video_dir.exists():
+            # check if all frames were extracted
+            if modality == "rgb":
+                pattern = "*.png"
             else:
-                print(
-                    "Not saving frame, because there already exists a frame\n"
-                    f"with the name {frame_path.name} inside the folder {output_video_dir.name}!")
+                pattern = "*.npy"
+                num_frames -= 1 # optical flowból egyel kevesebb van, mint ahány frame
+            
+            frame_paths = list(out_video_dir.glob(pattern))
+            
+            if len(frame_paths) == num_frames:
+                print(f"It seems that all frames were extracted from {video_path.name}!")
+                print("Moving onto the next video!")
+                continue
+        else:
+            print(f"{out_video_dir.name} directory does not exist, creating it now!")
+            out_video_dir.mkdir()
+        
+        frames = []
+        
+        # read in every frame
+        while cap.isOpened():
+            ret, frame = cap.read() # BGR
+            if not ret:
+                break
+            frames.append(frame)
+            
+        frames = [cv2.resize(frame, frame_size) for frame in frames]
+        
+        if modality == "rgb":
+            for i, frame in enumerate(frames):
+                out_frame_path = out_video_dir.joinpath(f"{i + 1}.png")
+                cv2.imwrite(str(out_frame_path), frame) # will be saved as RGB
+                print(f"Saved RGB image as {out_frame_path.name} to {out_video_dir}!")
+        else:
+            gray_frames = [cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) for frame in frames]
+            current_frame = gray_frames[0]
+
+            for i, next_frame in enumerate(gray_frames[1:]):
+                optical_flow = cv2.calcOpticalFlowFarneback(
+                    current_frame,
+                    next_frame,
+                    None,
+                    0.5, 3, 15, 3, 5, 1.2, 0
+                )
+                current_frame = next_frame
+                out_flow_path = out_video_dir.joinpath(f"{i + 1}.npy")
+                np.save(out_flow_path, optical_flow)
+                print(f"Saved optical flow as {out_flow_path.name} to {out_video_dir}!")
                 
-        print(f"Finished saving frames for {video_path.name}!")
+        print(f"Finished processing {video_path.name}!")
+        
+    print("Finished processing all videos!")
                 
                 
 if __name__ == "__main__":

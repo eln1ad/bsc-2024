@@ -31,7 +31,6 @@ def make_c3d_config_json():
         
         
 def C3D():
-    
     config_path = Path.cwd().joinpath("data", "c3d_config.json")
     
     if not config_path.exists():

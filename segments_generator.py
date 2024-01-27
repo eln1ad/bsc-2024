@@ -19,6 +19,16 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
     
     if not isinstance(num_frames, int) or num_frames <= 0:
         raise ValueError("'num_frames' must be a positive integer!")
+    
+    # the directory name ends with rgb or flow
+    modality = str(Path(video_frames_dir).name).lower()
+    
+    if modality not in ["rgb", "flow"]:
+        raise ValueError(
+            "'modality' can only be rgb or flow!\n"
+            "HINT: You might need to rename your directory to rgb or flow!\n"
+            "/home/elniad/datasets/boxing/frames/rgb"
+        )
         
     def frames_label_generator():   
         df = pd.read_csv(csv_file, index_col=None)
@@ -34,18 +44,22 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
             
             video_dir = Path(video_frames_dir).joinpath(video_name)
             
-            array_files = os_sorted(video_dir.rglob("*.npy"))
-            array_files = array_files[seg_start : seg_end]
-            
+            if modality == "rgb":
+                fpaths = os_sorted(video_dir.rglob("*.png"))
+            else:
+                fpaths = os_sorted(video_dir.rglob("*.npy"))
+                
+            fpaths = fpaths[seg_start : seg_end]                
             frames = []
             
-            for array_file in array_files:
-                frame = np.load(array_file).astype(np.float32)
-                
-                # if the frame is RGB then normalization is needed
-                # if the frame is FLOW then the values are correct
-                if frame.shape[-1] == 3:
-                    frame /= 255
+            for fpath in fpaths:
+                if modality == "rgb":
+                    frame = cv2.imread(str(fpath))
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame = frame.astype(np.float32)
+                    frame /= 255.0
+                else:
+                    frame = np.load(fpath)
                 
                 frames.append(frame)
                 
@@ -78,7 +92,7 @@ if __name__ == "__main__":
     
     generator = get_frames_label_generator(
         data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv"), 
-        "/home/elniad/datasets/boxing/frames/rgb",
+        "/home/elniad/datasets/boxing/frames/flow",
         num_frames=8, shuffle=True
     )
     
