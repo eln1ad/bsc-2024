@@ -7,7 +7,7 @@ from c3d import C3D
 from keras.optimizers import SGD, Adam
 from keras.losses import CategoricalCrossentropy
 from keras.metrics import CategoricalAccuracy
-from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger, ReduceLROnPlateau, TensorBoard
 
 
 checkpoints_dir = Path.cwd().joinpath("checkpoints")
@@ -16,8 +16,8 @@ figures_dir = Path.cwd().joinpath("figures")
 logs_dir = Path.cwd().joinpath("logs")
 data_dir = Path.cwd().joinpath("data")
 
-train_csv = data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv")
-val_csv = data_dir.joinpath("val_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv")
+train_csv = data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.5_tiou_low_0.15.csv")
+val_csv = data_dir.joinpath("val_segments_size_8_stride_1_tiou_high_0.5_tiou_low_0.15.csv")
 
 if not checkpoints_dir.exists():
     print("checkpoints directory does not exist, creating it now!")
@@ -78,12 +78,12 @@ output_signature = (
 train_dset = tf.data.Dataset.from_generator(
     train_gen, 
     output_signature=output_signature
-).batch(config["batch-size"], drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+).batch(config["batch-size"], drop_remainder=True).cache().prefetch(tf.data.AUTOTUNE) # caching and prefetching helps to alleviate the problem of highly input bound models
 
 val_dset = tf.data.Dataset.from_generator(
     val_gen, 
     output_signature=output_signature
-).batch(config["batch-size"], drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+).batch(config["batch-size"], drop_remainder=True).cache().prefetch(tf.data.AUTOTUNE)
         
 if config["optimizer"] in ["SGD", "sgd"]:
     optimizer = SGD(learning_rate=config["learning-rate"])
@@ -113,6 +113,10 @@ callbacks = [
         filename=logs_dir.joinpath(f"training_log_{model_version}.csv"),
         append=False,
     ),
+    TensorBoard(
+        log_dir=str(logs_dir.joinpath(f"tboard_logs_{model_version}")),
+        profile_batch=(10, 20) # profile batches batches between 10 and 20
+    )
     # ReduceLROnPlateau(
     #     monitor="loss",
     #     factor=0.1,
@@ -128,7 +132,7 @@ model.compile(
 )
 
 history = model.fit(train_dset, validation_data=val_dset,
-                    epochs=config["epochs"], callbacks=callbacks)
+                    epochs=config["epochs"], callbacks=callbacks, workers=6)
 
 tf.keras.models.save_model(model, model_save_path)
 print(f"Saved C3D model to {model_save_path}!")

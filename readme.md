@@ -25,3 +25,13 @@ Videos are located at multiple places:
 
 - /home/elniad/datasets/boxing/videos
 - /media/elniad/4tb_hdd/datasets/boxing/videos
+
+Az `natsorted` package `os_sorted` függvényével óvatosan kell bánni, amikor generátort ír az ember  
+ha sok file van egy mappában akkor a rendezés sok időbe telik (0,5s) ami miatt **nagyon** belassul  
+a tanítás. A tensorflow profiler segítségével meg lehet nézni, hogy mi lassítja a tanítást (I/O művelet, stb.)
+
+A tensorboard így tudom meghívni úgy, hogy a profile szekció is elérhető legyen:  
+```bash
+conda activate bsc
+tensorboard --logdir=/home/elniad/bsc-2024/logs/<CÉLPONT TBOARD PREFIXŰ MAPPA NEVE>
+```

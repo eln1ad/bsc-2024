@@ -17,3 +17,6 @@ gpu_testing
 
 data/*
 !data/.gitkeep
+
+diagnostics
+quick_scripts

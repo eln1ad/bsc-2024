@@ -52,27 +52,30 @@ def extract_frames(videos_dir, output_dir, frame_size = None, modality = "rgb"):
             print(f"{out_video_dir.name} directory does not exist, creating it now!")
             out_video_dir.mkdir()
         
-        frames = []
-        
-        # read in every frame
-        while cap.isOpened():
-            ret, frame = cap.read() # BGR
-            if not ret:
-                break
-            frames.append(frame)
-            
-        frames = [cv2.resize(frame, frame_size) for frame in frames]
-        
         if modality == "rgb":
-            for i, frame in enumerate(frames):
-                out_frame_path = out_video_dir.joinpath(f"{i + 1}.png")
-                cv2.imwrite(str(out_frame_path), frame) # will be saved as RGB
+            i = 0
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                i += 1
+                frame = cv2.resize(frame, frame_size)
+                out_frame_path = out_video_dir.joinpath(f"{i}.png")
+                cv2.imwrite(str(out_frame_path), frame)
                 print(f"Saved RGB image as {out_frame_path.name} to {out_video_dir}!")
         else:
-            gray_frames = [cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) for frame in frames]
-            current_frame = gray_frames[0]
-
-            for i, next_frame in enumerate(gray_frames[1:]):
+            i = 0
+            ret, current_frame = cap.read()
+            current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
+            current_frame = cv2.resize(current_frame, frame_size)
+            
+            while cap.isOpened():
+                ret, next_frame = cap.read()
+                if not ret:
+                    break
+                i += 1
+                next_frame = cv2.cvtColor(next_frame, cv2.COLOR_BGR2GRAY)
+                next_frame = cv2.resize(next_frame, frame_size)
                 optical_flow = cv2.calcOpticalFlowFarneback(
                     current_frame,
                     next_frame,
@@ -80,7 +83,7 @@ def extract_frames(videos_dir, output_dir, frame_size = None, modality = "rgb"):
                     0.5, 3, 15, 3, 5, 1.2, 0
                 )
                 current_frame = next_frame
-                out_flow_path = out_video_dir.joinpath(f"{i + 1}.npy")
+                out_flow_path = out_video_dir.joinpath(f"{i}.npy")
                 np.save(out_flow_path, optical_flow)
                 print(f"Saved optical flow as {out_flow_path.name} to {out_video_dir}!")
                 

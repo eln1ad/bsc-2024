@@ -11,12 +11,12 @@ COLUMNS = ["video_name", "seg_start", "seg_end", "gt_start", "gt_end", "label", 
 data_dir = Path.cwd().joinpath("data")
 
 
-def make_csvs(videos_dir, upper_tiou_threshold = 0.6, lower_tiou_threshold = 0.15,
+def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.15,
              segment_size = 8, segment_stride = 1, train_pct = 0.8, rnd_seed = 42):
-    dataset_path = data_dir.joinpath("dataset.json")
+    dataset_path = data_dir.joinpath("dataset2.json")
     
     if not Path(dataset_path).exists():
-        raise ValueError("File dataset.json does not exist!")
+        raise ValueError("File dataset2.jon does not exist!")
     
     with open(dataset_path, "r") as file:
         dataset = json.load(file)
@@ -35,6 +35,7 @@ def make_csvs(videos_dir, upper_tiou_threshold = 0.6, lower_tiou_threshold = 0.1
 
     for video_path in video_path_list:
         video_name = video_path.stem
+        
         video_data = dataset[video_name]
         video_num_frames = video_data["frames"]
         

@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from natsort import os_sorted # Ez nagyon fontos, mert a fileok különben így lesznek sortolva: [1, 10, 11, 12, 2, 20, 21, 22]
+import time
 
 
 # a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
@@ -38,11 +39,15 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
             df = df.sample(frac=1).reset_index(drop=True)
         
         for row in df.itertuples(index=False):
+            # start_time = time.time()
+            
             video_name = row[0]
             seg_start, seg_end = int(row[1]), int(row[2])
             label = row[-2]
             
             video_dir = Path(video_frames_dir).joinpath(video_name)
+            
+            # print(f"VIDEO: {video_dir.name}")
             
             if modality == "rgb":
                 fpaths = os_sorted(video_dir.rglob("*.png"))
@@ -58,12 +63,19 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     frame = frame.astype(np.float32)
                     frame /= 255.0
+                    # frame = load_img(fpath, color_mode="rgb")
+                    # frame = img_to_array(frame)
                 else:
                     frame = np.load(fpath)
+                    
                 
                 frames.append(frame)
                 
             frames = np.array(frames)
+            # end_time = time.time()
+            # print(f"Loaded frames in {round(end_time - start_time, 3)}s!")
+            
+            # start_time = time.time()
             
             # trimming last frames
             if frames.shape[0] > num_frames:
@@ -80,6 +92,9 @@ def get_frames_label_generator(csv_file, video_frames_dir, num_frames=None, shuf
                 
             one_hot = np.zeros(len(label_list))
             one_hot[label_list.index(label)] = 1.0
+            
+            # end_time = time.time()
+            # print(f"Finished ops in {round(end_time - start_time, 3)}s!\n")
                     
             yield frames, one_hot
             
@@ -91,8 +106,8 @@ if __name__ == "__main__":
     
     
     generator = get_frames_label_generator(
-        data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.6_tiou_low_0.15.csv"), 
-        "/home/elniad/datasets/boxing/frames/flow",
+        data_dir.joinpath("train_segments_size_8_stride_1_tiou_high_0.5_tiou_low_0.15.csv"), 
+        "/home/elniad/datasets/boxing/frames/rgb",
         num_frames=8, shuffle=True
     )
     
