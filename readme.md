@@ -1,8 +1,12 @@
-## Video Classifier
+# Semsey Dániel Szakdolgozat - OE-NIK 2024 
 
-How to train the video classifier?
+The goal of the project is to implement a boxing video snippet classifier with temporal boundary regression, the unified model can be viewed as a temporal action detector, thus the whole project belongs to the field of temporal action detection (a subset of computer vision).
 
-Small snippets can be sampled from every video, with a window size of 8 or 16. Every snippet should have a label attached to it, based on it's IoU value with the closest ground truth instance. If the IoU is higher than 0.5 then the window will be marked as positive, else negative.
+The code is not yet ready, updates are to come ...
+
+## Video Classification
+
+At the start of the project a basic video classifier is implemented. The model architecture is largely influenced by the C3D research model, but it is a much smaller version of that. During my experiments I train 2 separate models, one on RGB images and the other on optical flow frames. These models are trained with an NVIDIA GTX 1080TI GPU utilising relatively small number of epochs.
 
 ## How to create environment?
 
@@ -20,12 +24,11 @@ pip install opencv-python
 ```
 
 ## Note to self
+Locations of the videos
+- /home/elniad/datasets/boxing/videos (this contains UP-TO-DATE videos)
+- /media/elniad/4tb_hdd/datasets/boxing/videos (this contains an OLDER version of videos)
 
-Videos are located at multiple places:
-
-- /home/elniad/datasets/boxing/videos
-- /media/elniad/4tb_hdd/datasets/boxing/videos
-
+## Bugfixes
 Az `natsorted` package `os_sorted` függvényével óvatosan kell bánni, amikor generátort ír az ember  
 ha sok file van egy mappában akkor a rendezés sok időbe telik (0,5s) ami miatt **nagyon** belassul  
 a tanítás. A tensorflow profiler segítségével meg lehet nézni, hogy mi lassítja a tanítást (I/O művelet, stb.)
