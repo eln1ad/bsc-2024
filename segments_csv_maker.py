@@ -7,12 +7,14 @@ import pandas as pd
 
 
 COLUMNS = ["video_name", "seg_start", "seg_end", "gt_start", "gt_end", "label", "tiou"]
+LABELING_MODES = ["binary", "multi-class"]
 
 data_dir = Path.cwd().joinpath("data")
 
 
 def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.15,
-             segment_size = 8, segment_stride = 1, train_pct = 0.8, rnd_seed = 42):
+             segment_size = 8, segment_stride = 1, train_pct = 0.8, rnd_seed = 42,
+             labeling_mode = "multi-class"):
     dataset_path = data_dir.joinpath("dataset2.json")
     
     if not Path(dataset_path).exists():
@@ -25,6 +27,9 @@ def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.1
     
     if not Path(videos_dir).exists():
         raise ValueError("'videos_dir' does not exist!")
+    
+    if labeling_mode not in LABELING_MODES:
+        raise ValueError("'labeling_mode' can only be 'binary' or 'multi-class'!")
     
     video_path_list = list(Path(videos_dir).rglob("*.mp4"))
     
@@ -59,7 +64,10 @@ def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.1
             segment = segments[i]
             
             if max_tiou >= upper_tiou_threshold:
-                video_label = video_gt_list[max_gt_idx]["label"]
+                if labeling_mode == "binary":
+                    video_label = "action"
+                else:
+                    video_label = video_gt_list[max_gt_idx]["label"]
                 matched_gt = video_gt_array[max_gt_idx]
             elif max_tiou <= lower_tiou_threshold:
                 video_label = "background"
@@ -92,7 +100,7 @@ def make_csvs(videos_dir, upper_tiou_threshold = 0.5, lower_tiou_threshold = 0.1
     
     for set_name, one_set in full_set.items():
         pd.DataFrame(one_set, columns=COLUMNS).to_csv(
-            data_dir.joinpath(f"{set_name}_segments_size_{segment_size}_stride_{segment_stride}_tiou_high_{upper_tiou_threshold}_tiou_low_{lower_tiou_threshold}.csv"), 
+            data_dir.joinpath(f"{set_name}_{labeling_mode}_segments_size_{segment_size}_stride_{segment_stride}_tiou_high_{upper_tiou_threshold}_tiou_low_{lower_tiou_threshold}.csv"), 
             index=None
         )
     
@@ -104,4 +112,5 @@ if __name__ == "__main__":
         "/home/elniad/datasets/boxing/videos",
         segment_size=8,
         segment_stride=1,
+        labeling_mode="binary"
     )
