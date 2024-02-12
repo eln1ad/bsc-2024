@@ -81,8 +81,10 @@ def C3D():
         output_layer = Softmax()(fc_8)
         
     return Model(inputs=input_layer, outputs=output_layer)
- 
+
 
 if __name__ == "__main__":
     model = C3D()
-    model.summary()
+    
+    for layer in model.layers:
+        print(layer)
