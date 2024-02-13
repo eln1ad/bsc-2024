@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 # a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
-def get_features_label_generator(csv_file, video_features_dir, shuffle=True):
+def action_detection_generator(csv_file, video_features_dir, shuffle=True):
     if not Path(csv_file).exists():
             raise ValueError("'csv_file' does not exist!")
         
@@ -24,7 +24,7 @@ def get_features_label_generator(csv_file, video_features_dir, shuffle=True):
             "/home/elniad/datasets/boxing/frames/rgb"
         )
         
-    def features_label_generator():   
+    def generator_func():  
         df = pd.read_csv(csv_file, index_col=None)
           
         if shuffle:
@@ -36,54 +36,55 @@ def get_features_label_generator(csv_file, video_features_dir, shuffle=True):
             video_name = row[0]
             seg_start, seg_end = int(row[1]), int(row[2])
             gt_start, gt_end = int(row[3]), int(row[4])
-            label = row[5]
+            gt_label = row[5]
             
             video_dir = Path(video_features_dir).joinpath(video_name)
             
             # retrive all features between seg_start and seg_end
-            fpaths = os_sorted(video_dir.rglob("*.npy"))
+            file_paths = os_sorted(video_dir.rglob("*.npy"))
             
-            X = []
+            features = []
             
-            for fpath in fpaths:
-                parts = str(fpath.stem).split("_")
+            for file_path in file_paths:
+                parts = str(file_path.stem).split("_")
                 start, end = int(parts[1]), int(parts[2])
                 
                 if seg_start <= start and end <= seg_end:
-                    feature = np.load(fpath)
-                    X.append(feature)
+                    feature = np.load(file_path)
+                    features.append(feature)
                     
-            # take the average
-            X = np.average(X, axis=0)
+            # avg & norm
+            features = np.average(features, axis=0)
+            features = l2_norm(features)
             
-            # L2 norm
-            X = l2_norm(X)
-            
-            if label == "action":
-                y_label = np.array([1.0], dtype=np.float32)
+            if gt_label == "action":
+                label = np.array([1.0], dtype=np.float32)
             else:
-                y_label = np.array([0.0], dtype=np.float32)
+                label = np.array([0.0], dtype=np.float32)
                 
             # encode center, length
-            gt_length = gt_end - gt_start + 1
-            seg_length = seg_end - seg_start + 1
+            gt_length = gt_end - gt_start # not adding 1, because end is exclusive
+            seg_length = seg_end - seg_start
             
-            gt_center = (gt_end + gt_start) / 2
-            seg_center = (seg_end + seg_start) / 2
+            gt_center = (gt_end + gt_start) / 2.0
+            seg_center = (seg_end + seg_start) / 2.0
             
-            y_center = np.array([(gt_center - seg_center) / seg_length], dtype=np.float32)
-            y_length = np.array([np.log(gt_length / seg_length)], dtype=np.float32)
+            if gt_label == "action":
+                delta_center = np.array([(gt_center - seg_center) / seg_length], dtype=np.float32)
+                delta_length = np.array([np.log(gt_length / seg_length)], dtype=np.float32)
+            else:
+                delta_center = np.array([0.0], dtype=np.float32)
+                delta_length = np.array([0.0], dtype=np.float32)
             
-            yield X, (y_label, y_center, y_length)
+            yield features, (label, delta_center, delta_length)
             
-    return features_label_generator
+    return generator_func
     
         
 if __name__ == "__main__":
     data_dir = Path.cwd().joinpath("data")
     
-    
-    generator = get_features_label_generator(
+    generator = action_detection_generator(
         data_dir.joinpath("/home/elniad/bsc-2024/data/train_binary_segments_size_8_stride_1_tiou_high_0.5_tiou_low_0.15.csv"), 
         "/home/elniad/datasets/boxing/features/rgb",
         shuffle=True
@@ -98,8 +99,6 @@ if __name__ == "__main__":
         )
     )
     
-    
-    
     dataset = tf.data.Dataset.from_generator(
         generator, 
         output_signature=output_signature).batch(32, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
@@ -107,9 +106,12 @@ if __name__ == "__main__":
     for X, y in dataset:
         print(X.shape)
         y_label, y_center, y_length = y
-        print(y_label.shape)
-        print(y_center.shape)
-        print(y_length.shape)
-        print(y_center)
-        print(y_length)
+        # print(y_label.shape)
+        # print(y_center.shape)
+        # print(y_length.shape)
+        # print(y_label)
+        # print(y_center)
+        # print(y_length)
+        print(np.max(y_center))
+        print(np.max(y_length))
         break

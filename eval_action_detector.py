@@ -15,11 +15,13 @@ features_dir = Path("/home/elniad/datasets/boxing/features/rgb")
 
 # 1: Load in the trained action detector
 
-model_name = "action_detector_rgb_window_size_8_window_stride_1_epochs_30"
+model_name = "action_detector_rgb_window_size_8_window_stride_1_epochs_40"
 model_path = saved_models_dir.joinpath(model_name)
 
 model = keras.models.load_model(model_path)
 print("Loaded model!")
+
+keras.utils.plot_model(model, "model.png", show_shapes=True)
 
 # 2. Get a random test sample
 
@@ -61,7 +63,9 @@ features = np.expand_dims(feature, axis=0)
 
 preds = model(features)
 pred_labels, pred_centers, pred_lengths = preds
-pred_label, pred_center, pred_length = pred_labels[0], pred_centers[0], pred_lengths[0]
+pred_label, pred_center, pred_length = float(pred_labels[0].numpy()), float(pred_centers[0].numpy()), float(pred_lengths[0].numpy())
+
+print(pred_label, pred_center, pred_length)
 
 # 5. project back the values
 
@@ -70,20 +74,23 @@ if pred_label >= 0.5:
 else:
     proj_pred_label = "background"
 
-seg_length = seg_end - seg_start + 1
+seg_length = seg_end - seg_start
 seg_center = (seg_end + seg_start) / 2.0
 
-proj_pred_center = seg_center + pred_center
-proj_pred_length = seg_length + pred_length
+gt_length = gt_end - gt_start
+gt_center = (gt_end + gt_start) / 2.0
 
-print(proj_pred_center)
-print(proj_pred_length)
+proj_pred_center = pred_center * seg_length + seg_center
+proj_pred_length = np.exp(pred_length) * seg_length
 
-proj_pred_start = proj_pred_center - proj_pred_length / 2.0
-proj_pred_end = proj_pred_center + proj_pred_length / 2.0
+# proj_pred_center = seg_center + pred_center
+# proj_pred_length = seg_length + pred_length
+
+# proj_pred_start = proj_pred_center - proj_pred_length / 2.0
+# proj_pred_end = proj_pred_center + proj_pred_length / 2.0
 
 print(f">>> EVALUATION OF {str(video_name).upper()} <<<")
 print(f"\tTRUE VALUES")
-print(f"\t\tlabel: {label}, start: {gt_start}, end: {gt_end}")
+print(f"\t\tlabel: {label}, center: {gt_center}, length: {gt_length}")
 print(f"\tPREDICTED VALUES")
-print(f"\t\tlabel: {proj_pred_label}, start: {proj_pred_start}, end: {proj_pred_end}")
+print(f"\t\tlabel: {proj_pred_label}, center: {proj_pred_center}, length: {proj_pred_length}")

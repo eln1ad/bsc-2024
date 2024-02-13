@@ -3,8 +3,8 @@ import json
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from pathlib import Path
-from action_detector import action_detector, total_loss
-from features_generator import get_features_label_generator
+from action_detector import action_detector, localization_loss, weigthed_binary_crossentropy
+from action_detection_generator import action_detection_generator
 from keras.optimizers import SGD, Adam
 
 
@@ -54,12 +54,12 @@ video_features_dir = f"/home/elniad/datasets/boxing/features/{modality}"
 model_version = f"action_detector_{modality}_window_size_{config['window_size']}_window_stride_{config['window_stride']}_epochs_{config['epochs']}"
 model_save_path = saved_models_dir.joinpath(model_version)
 
-train_gen = get_features_label_generator(
+train_gen = action_detection_generator(
     train_csv, video_features_dir,
     shuffle=True
 )
 
-val_gen = get_features_label_generator(
+val_gen = action_detection_generator(
     val_csv, video_features_dir,
     shuffle=True
 )
@@ -90,7 +90,7 @@ elif config["optimizer"] in ["Adam", "adam"]:
 else:
     raise ValueError(f"Unknown optimizer inside config file!")
 
-model = action_detector(feat_dim=config["feature-dim"], num_units=config["linear-units"])
+model = action_detector(feat_dim=config["feature-dim"], num_units=config["linear-units"], dropout_rate=config["dropout-rate"])
 model.summary()
 
 train_losses = []
@@ -100,53 +100,83 @@ val_losses = []
 for epoch in range(config["epochs"]):
     start_time = time.time()
     
-    train_loss = 0
-    val_loss = 0
+    train_total_loss = 0
+    train_classification_loss = 0
+    train_regression_loss = 0
     train_batch_counter = 0
+    
+    val_total_loss = 0
+    val_classification_loss = 0
+    val_regression_loss = 0
     val_batch_counter = 0
     
     print(f"Epoch {epoch + 1}.")
     
-    for batch_idx, (X_batch, y_batch) in enumerate(train_dset):
+    for batch_idx, (features, targets) in enumerate(train_dset):
+        target_labels, target_delta_centers, target_delta_lengths = targets
+
         with tf.GradientTape() as tape:
-            pred_labels, pred_centers, pred_lengths = model(X_batch)
+            pred_labels, pred_delta_centers, pred_delta_lengths = model(features)
             
-            train_loss += total_loss(
-                y_batch,
-                (pred_labels, pred_centers, pred_lengths),
-                config["lambda-regression"],
-                config["w-positive"],
-                config["w-negative"],
+            classification_loss = weigthed_binary_crossentropy(
+                target_labels, pred_labels,
+                w_positive=config["w-positive"], w_negative=config["w-negative"]
             )
             
-        gradients = tape.gradient(train_loss, model.trainable_weights)
+            regression_loss = localization_loss(
+                target_labels, target_delta_centers, target_delta_lengths,
+                pred_delta_centers, pred_delta_lengths
+            ) * config["lambda-regression"] # Ez most 10.0-re van állítva, tehát ha a regressziónál kicsit hibázik, akkor az nagyon bele fog számítani a loss-ba
+            
+            batch_loss = classification_loss + regression_loss
+            
+        gradients = tape.gradient(batch_loss, model.trainable_weights)
         optimizer.apply_gradients(zip(gradients, model.trainable_weights))
+        
+        train_total_loss += batch_loss
+        train_classification_loss += classification_loss
+        train_regression_loss += regression_loss
         
         train_batch_counter += 1
         
         if batch_idx % 10 == 0:
             print(f"Elapsed time: {round(time.time() - start_time, 4)}s")
-            print(f"Train loss: {train_loss / train_batch_counter}\n")
+            # print(f"Train loss: {train_loss / train_batch_counter}\n")
+            print(f"Total loss: {train_total_loss / train_batch_counter}")
+            print(f"Classification loss: {train_classification_loss / train_batch_counter}")
+            print(f"Regression loss: {train_regression_loss / train_batch_counter}\n")
     
-    train_losses.append(train_loss / train_batch_counter)
+    train_losses.append(train_total_loss / train_batch_counter)
     
-    for batch_idx, (X_batch, y_batch) in enumerate(val_dset):
-        pred_labels, pred_centers, pred_lengths = model(X_batch)
-        val_loss += total_loss(
-                y_batch,
-                (pred_labels, pred_centers, pred_lengths),
-                config["lambda-regression"],
-                config["w-positive"],
-                config["w-negative"],
-            )
+    for batch_idx, (features, targets) in enumerate(val_dset):
+        target_labels, target_delta_centers, target_delta_lengths = targets
+        
+        pred_labels, pred_delta_centers, pred_delta_lengths = model(features)
+            
+        classification_loss = weigthed_binary_crossentropy(
+            target_labels, pred_labels, 
+            w_positive=config["w-positive"], w_negative=config["w-negative"]
+        )
+        
+        regression_loss = localization_loss(
+            target_labels, target_delta_centers, target_delta_lengths,
+            pred_delta_centers, pred_delta_lengths
+        )
+        
+        val_total_loss += (regression_loss + classification_loss)
+        val_classification_loss += classification_loss
+        val_regression_loss += regression_loss
         
         val_batch_counter += 1
         
         if batch_idx % 10 == 0:
             print(f"Elapsed time: {round(time.time() - start_time, 4)}s")
-            print(f"Val loss: {val_loss / val_batch_counter}\n")
-        
-    val_losses.append(val_loss / val_batch_counter)  
+            # print(f"Train loss: {train_loss / train_batch_counter}\n")
+            print(f"Total loss: {val_total_loss / val_batch_counter}")
+            print(f"Classification loss: {val_classification_loss / val_batch_counter}")
+            print(f"Regression loss: {val_regression_loss / val_batch_counter}\n")
+    
+    val_losses.append(val_total_loss / val_batch_counter) 
     
 print("Finished training!")
 model.save(model_save_path)
