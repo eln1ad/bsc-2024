@@ -140,6 +140,7 @@ for epoch in range(config["epochs"]):
         train_batch_counter += 1
         
         if batch_idx % 10 == 0:
+            print("<<< TRAIN >>>")
             print(f"Elapsed time: {round(time.time() - start_time, 4)}s")
             # print(f"Train loss: {train_loss / train_batch_counter}\n")
             print(f"Total loss: {train_total_loss / train_batch_counter}")
@@ -170,6 +171,7 @@ for epoch in range(config["epochs"]):
         val_batch_counter += 1
         
         if batch_idx % 10 == 0:
+            print("<<< VALIDATION >>>")
             print(f"Elapsed time: {round(time.time() - start_time, 4)}s")
             # print(f"Train loss: {train_loss / train_batch_counter}\n")
             print(f"Total loss: {val_total_loss / val_batch_counter}")

@@ -54,8 +54,12 @@ for feature_path in feature_paths:
 # take the average
 features = np.average(features, axis=0)
 
-# L2 norm
-features = l2_norm(features)
+# ÖTLET:
+# 1. SEMMI normalizáció
+# 2. mean_std normalizáció
+# features = mean_std_norm(features)
+# 3. l2 normalizáció
+# features = l2_norm(features)
 
 # 4. predict with model
 

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from natsort import os_sorted # Ez nagyon fontos, mert a fileok különben így lesznek sortolva: [1, 10, 11, 12, 2, 20, 21, 22]
-from normalize import l2_norm
+from normalize import l2_norm, mean_std_norm
 import tensorflow as tf
 
 
@@ -53,9 +53,14 @@ def action_detection_generator(csv_file, video_features_dir, shuffle=True):
                     feature = np.load(file_path)
                     features.append(feature)
                     
-            # avg & norm
             features = np.average(features, axis=0)
-            features = l2_norm(features)
+            
+            # ÖTLET:
+            # 1. SEMMI normalizáció
+            # 2. mean_std normalizáció
+            # features = mean_std_norm(features)
+            # 3. l2 normalizáció
+            # features = l2_norm(features)
             
             if gt_label == "action":
                 label = np.array([1.0], dtype=np.float32)
@@ -112,6 +117,8 @@ if __name__ == "__main__":
         # print(y_label)
         # print(y_center)
         # print(y_length)
+        print(np.min(X))
+        print(np.max(X))
         print(np.max(y_center))
         print(np.max(y_length))
         break
