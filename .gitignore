@@ -13,10 +13,18 @@ figures/*
 checkpoints/*
 !checkpoints/.gitkeep
 
+configs/*
+!configs/.gitkeep
+
 gpu_testing
 
 data/*
 !data/.gitkeep
+!data/classification
+!data/detection
+
+data/classification/*
+data/detection/*
 
 diagnostics
 quick_scripts

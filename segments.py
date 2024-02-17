@@ -1,6 +1,31 @@
 import numpy as np
 
 
+# def length(seg):
+#     return seg[1] - seg[0]
+
+
+# def center(seg):
+#     return (seg[1] + seg[0]) / 2.0
+
+
+# def lengths(segs):
+#     return segs[:, 1] - segs[:, 0]
+
+
+# def centers(segs):
+#     return (segs[:, 1] + segs[:, 0]) / 2.0
+
+
+# def delta_center(seg_ref, seg):
+#     return center(seg_ref) - center(seg)
+
+
+# def delta_length(seg_ref, seg):
+#     return length(seg_ref) - length(seg)
+    
+
+
 def intersections(segs_a, segs_b):
     return np.maximum(0.0, np.minimum(segs_b[:, 1], segs_a[:, 1]) - np.maximum(segs_b[:, 0], segs_a[:, 0])) + 1.0
 
@@ -43,5 +68,3 @@ if __name__ == "__main__":
         [65, 78],
         [78, 90]
     ])
-    
-    print(tious(segs_gt, segs_target))

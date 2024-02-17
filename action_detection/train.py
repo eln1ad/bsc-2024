@@ -3,8 +3,9 @@ import json
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from pathlib import Path
-from action_detector import action_detector, localization_loss, weigthed_binary_crossentropy
-from action_detection_generator import action_detection_generator
+from action_detection.models import detector
+from action_detection.losses import localization_loss, weigthed_binary_crossentropy
+from action_detection.generator import action_detection_generator
 from keras.optimizers import SGD, Adam
 
 
@@ -39,7 +40,7 @@ if not train_csv.exists():
 if not val_csv.exists():
     raise ValueError("The file 'val_csv' points to does not exist!")
 
-with open(data_dir.joinpath("action_detector_config.json"), "r") as file:
+with open(data_dir.joinpath("detector_config.json"), "r") as file:
     config = json.load(file)
 
 if config["color-channels"] == 2:
@@ -51,7 +52,7 @@ else:
 
 video_features_dir = f"/home/elniad/datasets/boxing/features/{modality}"
 
-model_version = f"action_detector_{modality}_window_size_{config['window_size']}_window_stride_{config['window_stride']}_epochs_{config['epochs']}"
+model_version = f"detector_{modality}_window_size_{config['window_size']}_window_stride_{config['window_stride']}_epochs_{config['epochs']}"
 model_save_path = saved_models_dir.joinpath(model_version)
 
 train_gen = action_detection_generator(
@@ -90,7 +91,7 @@ elif config["optimizer"] in ["Adam", "adam"]:
 else:
     raise ValueError(f"Unknown optimizer inside config file!")
 
-model = action_detector(feat_dim=config["feature-dim"], num_units=config["linear-units"], dropout_rate=config["dropout-rate"])
+model = detector(feat_dim=config["feature-dim"], num_units=config["linear-units"], dropout_rate=config["dropout-rate"])
 model.summary()
 
 train_losses = []

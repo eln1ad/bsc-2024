@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from natsort import os_sorted # Ez nagyon fontos, mert a fileok különben így lesznek sortolva: [1, 10, 11, 12, 2, 20, 21, 22]
-from normalize import l2_norm, mean_std_norm
+from feature_norm import l2_norm, mean_std_norm
 import tensorflow as tf
 
 

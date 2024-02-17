@@ -4,39 +4,18 @@ from keras import Model, Input
 from keras.layers import Conv3D, ReLU, MaxPool3D, Flatten, Dropout, Dense, Softmax
 from keras.activations import sigmoid
 from pathlib import Path
-
-
-def make_c3d_config_json():
-    config = {
-        "capacity": 8, # number of frames
-        "image-width": 112,
-        "image-height": 112,
-        "color-channels": 3,
-        "linear-units": 1024,
-        "num-classes": 7,
-        "dropout-pct": 0.5,
-        "conv-1-filters": 64,
-        "conv-2-filters": 64,
-        "conv-3-filters": 128,
-        "conv-4-filters": 256,
-        "conv-stride": (1, 1, 1),
-        "conv-kernel-size": (3, 3, 3),
-        "conv-padding": "same",
-        "pool-1-size": (1, 2, 2),
-        "pool-rest-size": (2, 2, 2),
-    }
-    
-    with open("c3d_config.json", "w") as f:
-        json.dump(config, f, indent=4)
         
-        
+
+configs_dir = Path.cwd().joinpath("configs")
+
+     
 def C3D():
-    config_path = Path.cwd().joinpath("data", "c3d_config.json")
+    c3d_config_path = configs_dir.joinpath("C3D.json")
     
-    if not config_path.exists():
-        raise ValueError("c3d_config.json does not exist!")
+    if not c3d_config_path.exists():
+        raise ValueError("[ERROR] configs/C3D.json does not exist!")
     
-    with open(config_path, "r") as f:
+    with open(c3d_config_path, "r") as f:
         config = json.load(f)
         
     input_layer = Input(shape=(config["capacity"], config["image-width"], config["image-height"], config["color-channels"]))

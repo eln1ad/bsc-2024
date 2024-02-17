@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from natsort import os_sorted
 from pathlib import Path
-from normalize import l2_norm
+from feature_norm import l2_norm
 
 # 0: Define constants
 saved_models_dir = Path.cwd().joinpath("saved_models")
@@ -20,8 +20,6 @@ model_path = saved_models_dir.joinpath(model_name)
 
 model = keras.models.load_model(model_path)
 print("Loaded model!")
-
-keras.utils.plot_model(model, "model.png", show_shapes=True)
 
 # 2. Get a random test sample
 

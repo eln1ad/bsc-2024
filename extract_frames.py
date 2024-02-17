@@ -1,6 +1,5 @@
 import numpy as np
 from pathlib import Path
-from video import Video
 import cv2
 
 
