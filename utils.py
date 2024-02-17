@@ -4,7 +4,7 @@ from pathlib import Path
 
 def check_dir_exists(d: Path):
     if not d.exists():
-        print(f"[IFNO] {d.name} directory does not exist, creating it now!")
+        print(f"[INFO] {d.name} directory does not exist, creating it now!")
         d.mkdir()
         
 
