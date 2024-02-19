@@ -4,17 +4,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from natsort import os_sorted # Ez nagyon fontos, mert a fileok különben így lesznek sortolva: [1, 10, 11, 12, 2, 20, 21, 22]
-import time
+from utils import (
+    one_hot_encode,
+    check_file_exists,
+    check_dir_exists,
+    check_modality,
+)
 
 
 # a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
-def get_classification_generator(csv_file, video_frames_dir, 
-                               num_frames=None, task="binary", shuffle=True):
-    if not Path(csv_file).exists():
-            raise ValueError("[ERROR] 'csv_file' does not exist!")
-        
-    if not Path(video_frames_dir).exists():
-        raise ValueError("[ERROR] 'video_frames_dir' does not exist!")
+def get_video_classification_generator(csv_file, video_frames_dir, num_frames=None, task="binary", shuffle=True):
+    check_file_exists(csv_file)
+    check_dir_exists(video_frames_dir)
     
     if num_frames is None:
         raise ValueError("[ERROR] 'num_frames' must have a value!")
@@ -22,18 +23,14 @@ def get_classification_generator(csv_file, video_frames_dir,
     if not isinstance(num_frames, int) or num_frames <= 0:
         raise ValueError("[ERROR] 'num_frames' must be a positive integer!")
     
+    
     if task not in ["binary", "multi"]:
         raise ValueError("[ERROR] 'task' can only have the following values: (binary, multi)")
     
     # the directory name ends with rgb or flow
     modality = str(Path(video_frames_dir).name).lower()
     
-    if modality not in ["rgb", "flow"]:
-        raise ValueError(
-            "[ERROR] 'modality' can only be rgb or flow!\n"
-            "HINT: You might need to rename your directory to rgb or flow!\n"
-            "/home/elniad/datasets/boxing/frames/rgb"
-        )
+    check_modality(modality)
         
     def generator_func():   
         df = pd.read_csv(csv_file, index_col=None)
@@ -116,8 +113,7 @@ def get_classification_generator(csv_file, video_frames_dir,
             # if the task is multiclass classification then the
             # labels will be one-hot encoded on the fly
             else:
-                one_hot = np.zeros(len(label_list))
-                one_hot[label_list.index(label)] = 1.0
+                one_hot = one_hot_encode(label_list, label)
                 yield frames, one_hot
             
     return generator_func
@@ -126,20 +122,19 @@ def get_classification_generator(csv_file, video_frames_dir,
 if __name__ == "__main__":
     TASK = "binary"
     data_dir = Path.cwd().joinpath("data")
-    classifcation_data_dir = data_dir.joinpath("classification")
+    video_classifcation_data_dir = data_dir.joinpath("video_classification")
     
     
-    generator = get_classification_generator(
-        classifcation_data_dir.joinpath(f"{TASK}_train.csv"),
-        "/home/elniad/datasets/boxing/frames/rgb",
+    generator = get_video_classification_generator(
+        video_classifcation_data_dir.joinpath(f"{TASK}_train.csv"),
+        Path("/home/elniad/datasets/boxing/frames/rgb"),
         num_frames=8, shuffle=True,
         task="binary"
     )
     
-    possible_labels = sorted([0.0, 1.0])
-    
-    for frame, label in generator():
-        print("ok")
+    for x, y in generator():
+        print(x.shape, y.shape)
+        break
 
     # for frames, label in generator():
     #     print(frames.shape, label.shape)

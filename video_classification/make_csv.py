@@ -3,13 +3,14 @@ import json
 from pathlib import Path
 from segments import tious
 import pandas as pd
+from utils import load_json
 
 
 COLUMNS = ["video_name", "seg_start", "seg_end", "gt_start", "gt_end", "label", "tiou"]
 
 
 data_dir = Path.cwd().joinpath("data")
-classification_data_dir = data_dir.joinpath("classification")
+video_classification_data_dir = data_dir.joinpath("video_classification")
 
 
 def get_data_list(videos_dir, upper_tiou_threshold = 0.7, lower_tiou_threshold = 0.3,
@@ -130,7 +131,7 @@ def make_csvs(data_list, train_pct = 0.8, rnd_seed = 63, task = "binary"):
     
     for set_name, one_set in full_set.items():
         pd.DataFrame(one_set, columns=COLUMNS).to_csv(
-            classification_data_dir.joinpath(f"{task}_{set_name}.csv"),
+            video_classification_data_dir.joinpath(f"{task}_{set_name}.csv"),
             index=None
         )
     
@@ -139,11 +140,10 @@ def make_csvs(data_list, train_pct = 0.8, rnd_seed = 63, task = "binary"):
 
 if __name__ == "__main__":
     configs_dir = Path.cwd().joinpath("configs")
-    
-    with open(configs_dir.joinpath("general.json"), "r") as file:
-        configs = json.load(file)
+    paths_json = configs_dir.joinpath("paths.json")
+    paths_config = load_json(paths_json)
         
-    data_list = get_data_list(configs["video_dir"], upper_tiou_threshold=0.7, lower_tiou_threshold=0.3,
+    data_list = get_data_list(paths_config["videos_dir"], upper_tiou_threshold=0.7, lower_tiou_threshold=0.3,
                               segment_sizes=[8, 10, 12, 14, 16], segment_overlap=0.9,
                               task="binary")
     

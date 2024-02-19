@@ -27,7 +27,7 @@ figures_dir = Path.cwd().joinpath("figures")
 logs_dir = Path.cwd().joinpath("logs")
 configs_dir = Path.cwd().joinpath("configs")
 data_dir = Path.cwd().joinpath("data")
-detection_data_dir = data_dir.joinpath("detection")
+action_detection_data_dir = data_dir.joinpath("action_detection")
 
 
 check_dir_exists(checkpoints_dir)
@@ -35,45 +35,43 @@ check_dir_exists(saved_models_dir)
 check_dir_exists(figures_dir)
 check_dir_exists(logs_dir)
 check_dir_exists(data_dir)
-check_dir_exists(detection_data_dir)
+check_dir_exists(action_detection_data_dir)
 
 
-train_csv = detection_data_dir.joinpath("train.csv")
-val_csv = detection_data_dir.joinpath("val.csv")
+train_csv = action_detection_data_dir.joinpath("train.csv")
+val_csv = action_detection_data_dir.joinpath("val.csv")
 
 
 check_file_exists(train_csv)
 check_file_exists(val_csv)
 
 
-detector_config_json = configs_dir.joinpath("detector.json")
-general_config_json = configs_dir.joinpath("general.json")
+detector_json = configs_dir.joinpath("detector.json")
+check_file_exists(detector_json)
+model_config = load_json(detector_json)
 
 
-check_file_exists(detector_config_json)
-check_file_exists(general_config_json)
+paths_json = configs_dir.joinpath("paths.json")
+check_file_exists(paths_json)
+paths_config = load_json(paths_json)
 
 
-detector_config = load_json(detector_config_json)
-general_config = load_json(general_config_json)
-
-
-modality = get_modality(detector_config)
-input_shape = get_input_shape(detector_config)
-epochs = get_epochs(detector_config)
-batch_size = get_batch_size(detector_config)
-optimizer = get_optimizer(detector_config)
-positive_weight = get_positive_weight(detector_config)
-negative_weight = get_negative_weight(detector_config)
-lambda_regression = get_lambda_regression(detector_config)
+modality = get_modality(model_config)
+input_shape = get_input_shape(model_config)
+epochs = get_epochs(model_config)
+batch_size = get_batch_size(model_config)
+optimizer = get_optimizer(model_config)
+positive_weight = get_positive_weight(model_config)
+negative_weight = get_negative_weight(model_config)
+lambda_regression = get_lambda_regression(model_config)
 
 
 #features_dir = f"/home/elniad/datasets/boxing/features/{modality}"
-features_dir = Path(general_config["features_dir"]).joinpath(modality)
+features_dir = Path(paths_config["features_dir"]).joinpath(modality)
 
 
-model_version = f"detector_{modality}_{epochs}_epochs"
-model_save_path = saved_models_dir.joinpath(model_version)
+model_name = f"action_detector_{modality}_{epochs}_epochs"
+model_save_path = saved_models_dir.joinpath(model_name)
 
 
 train_gen = get_detection_generator(
@@ -112,8 +110,8 @@ val_dset = tf.data.Dataset.from_generator(
 
 model = detector(
     feat_dim=input_shape[0], 
-    num_units=get_linear_units(detector_config), 
-    dropout_rate=get_dropout_rate(detector_config)
+    num_units=get_linear_units(model_config), 
+    dropout_rate=get_dropout_rate(model_config)
 )
 model.summary()
 
@@ -201,10 +199,10 @@ for epoch in range(epochs):
     
     val_losses.append(tf.math.reduce_mean(val_epoch_losses))
     
-print("Finished training!")
+print("[INFO] Finished training!")
 model.save(model_save_path)
 
 plt.plot(list(range(epochs)), train_losses, color="blue", label="loss")
 plt.plot(list(range(epochs)), val_losses, color="red", label="val_loss")
 plt.legend(loc="upper right")
-plt.savefig(figures_dir.joinpath(f"train_history_{model_version}.png"))
+plt.savefig(figures_dir.joinpath(f"train_history_{model_name}.png"))

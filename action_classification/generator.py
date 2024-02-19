@@ -10,20 +10,32 @@ from utils import (
     check_file_exists,
     check_modality,
     check_norm_method,
+    one_hot_encode,
     load_json,
 )
 
 
-# a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
-def get_action_detection_generator(csv_file, video_features_dir, shuffle=True, norm_method=None):
+def load_label_list(txt_file):
+    label_list = []
+    with open(txt_file, "r") as file:
+        for line in file.readlines():
+            label = line.strip()
+            label_list.append(label)
+    return sorted(label_list)
+
+
+def get_classification_generator(csv_file, labels_txt_file, features_dir, shuffle=True, norm_method=None):
     check_file_exists(csv_file)
-    check_dir_exists(video_features_dir)
+    check_file_exists(labels_txt_file)
+    check_dir_exists(features_dir)
     check_norm_method(norm_method)
     
     # the directory name ends with rgb or flow
-    modality = str(Path(video_features_dir).name).lower()
+    modality = str(Path(features_dir).name).lower()
     
     check_modality(modality)
+    
+    label_list = load_label_list(labels_txt_file)
         
     def generator_func():  
         df = pd.read_csv(csv_file, index_col=None)
@@ -34,14 +46,12 @@ def get_action_detection_generator(csv_file, video_features_dir, shuffle=True, n
         for row in df.itertuples(index=False):
             video_name = row[0]
             seg_start, seg_end = int(row[1]), int(row[2])
-            label = row[5]
-            delta_center = row[8]
-            delta_length = row[9]
+            label = row[3]
             
-            video_dir = Path(video_features_dir).joinpath(video_name)
+            video_features_dir = Path(features_dir).joinpath(video_name)
             
             # retrive all features between seg_start and seg_end
-            file_paths = os_sorted(video_dir.rglob("*.npy"))
+            file_paths = os_sorted(video_features_dir.rglob("*.npy"))
             
             features = []
             
@@ -64,16 +74,15 @@ def get_action_detection_generator(csv_file, video_features_dir, shuffle=True, n
             else:
                 pass
             
-            yield features, (np.array([label]), np.array([delta_center]), np.array([delta_length]))
+            yield features, one_hot_encode(label_list, label)
             
     return generator_func
 
     
         
 if __name__ == "__main__":
-    data_dir = Path.cwd().joinpath("data")
-    action_detection_data_dir = data_dir.joinpath("action_detection")
     configs_dir = Path.cwd().joinpath("configs")
+    action_classification_data_dir = Path.cwd().joinpath("data", "action_classification")
     
     modality = "rgb"
     
@@ -81,19 +90,18 @@ if __name__ == "__main__":
     
     features_dir = Path(paths_config["features_dir"]).joinpath(modality)
     
-    generator = get_action_detection_generator(
-        action_detection_data_dir.joinpath("train.csv"), 
+    generator = get_classification_generator(
+        action_classification_data_dir.joinpath("train.csv"),
+        action_classification_data_dir.joinpath("label_list.txt"),
         features_dir,
         shuffle=True
     )
     
+    num_labels = len(load_label_list(action_classification_data_dir.joinpath("label_list.txt")))
+    
     output_signature = (
         tf.TensorSpec(shape=(1024,), dtype=tf.float32),
-        (
-            tf.TensorSpec(shape=(1,), dtype=tf.float32),
-            tf.TensorSpec(shape=(1,), dtype=tf.float32),
-            tf.TensorSpec(shape=(1,), dtype=tf.float32),
-        )
+        tf.TensorSpec(shape=(num_labels,), dtype=tf.float32),
     )
     
     dataset = tf.data.Dataset.from_generator(
@@ -101,8 +109,7 @@ if __name__ == "__main__":
         output_signature=output_signature).batch(32, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
 
     for i, (x, y) in enumerate(dataset):
-        print(x.shape)
-        label, center, length = y
-        print(label, center, length)
-        print(np.max(x[0]), np.min(x[0]))
+        print(x.shape, y.shape)
+        print(x)
+        print(y)
         break

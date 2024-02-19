@@ -3,13 +3,16 @@ import json
 from pathlib import Path
 from segments import tious
 import pandas as pd
+from utils import (
+    load_json
+)
 
 
-COLUMNS = ["video_name", "seg_start", "seg_end", "gt_start", "gt_end", "label", "tiou", "delta_center", "delta_length"]
+COLUMNS = ["video_name", "seg_start", "seg_end", "gt_start", "gt_end", "label", "label_str", "tiou", "delta_center", "delta_length"]
 
 
 data_dir = Path.cwd().joinpath("data")
-detection_data_dir = data_dir.joinpath("detection")
+action_detection_data_dir = data_dir.joinpath("action_detection")
 
 
 def get_data_list(videos_dir, upper_tiou_threshold = 0.7, lower_tiou_threshold = 0.3,
@@ -53,6 +56,7 @@ def get_data_list(videos_dir, upper_tiou_threshold = 0.7, lower_tiou_threshold =
                 continue
                 
             video_ground_truths = np.array([[x["start"], x["end"]] for x in video_data["actions"]])
+            video_ground_truth_labels = np.array([x["label"] for x in video_data["actions"]])
             
             segment_starts = np.arange(0, video_num_frames - segment_size + 1, segment_stride)
             segment_ends = segment_starts + segment_size
@@ -69,6 +73,7 @@ def get_data_list(videos_dir, upper_tiou_threshold = 0.7, lower_tiou_threshold =
                 
                 if max_tiou >= upper_tiou_threshold:
                     label = 1.0 # action
+                    label_str = video_ground_truth_labels[max_idx]
                     
                     ground_truth = video_ground_truths[max_idx]
                     ground_truth_length = ground_truth[1] - ground_truth[0]
@@ -84,17 +89,20 @@ def get_data_list(videos_dir, upper_tiou_threshold = 0.7, lower_tiou_threshold =
                         segment[0], segment[1], 
                         ground_truth[0], ground_truth[1],
                         label,
+                        label_str,
                         max_tiou,
                         delta_center_norm,
                         delta_length_norm
                     ])
                 elif max_tiou <= lower_tiou_threshold:
                     label = 0.0 # background
+                    label_str = "background"
                     data_list.append([
                         video_name, 
                         segment[0], segment[1], 
                         0.0, 0.0,
                         label,
+                        label_str,
                         max_tiou,
                         0.0, # delta center and length norms will be 0
                         0.0
@@ -128,7 +136,7 @@ def make_csvs(data_list, train_pct = 0.8, rnd_seed = 63):
         
     for set_name, one_set in full_set.items():
         pd.DataFrame(one_set, columns=COLUMNS).to_csv(
-            detection_data_dir.joinpath(f"{set_name}.csv"),
+            action_detection_data_dir.joinpath(f"{set_name}.csv"),
             index=None
         )
         
@@ -137,11 +145,9 @@ def make_csvs(data_list, train_pct = 0.8, rnd_seed = 63):
 
 if __name__ == "__main__":
     configs_dir = Path.cwd().joinpath("configs")
+    paths_config = load_json(configs_dir.joinpath("paths.json"))
     
-    with open(configs_dir.joinpath("general.json"), "r") as file:
-        configs = json.load(file)
-    
-    data_list = get_data_list(configs["video_dir"], upper_tiou_threshold=0.7, lower_tiou_threshold=0.3,
+    data_list = get_data_list(paths_config["videos_dir"], upper_tiou_threshold=0.7, lower_tiou_threshold=0.3,
                               segment_sizes=[8, 10, 12, 14, 16], segment_overlap=0.9)
     make_csvs(data_list, train_pct=0.9)
  

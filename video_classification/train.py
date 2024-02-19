@@ -1,7 +1,7 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from pathlib import Path
-from video_classification.generator import get_classification_generator
+from video_classification.generator import get_video_classification_generator
 from video_classification.models import C3D
 from keras.losses import CategoricalCrossentropy, BinaryCrossentropy
 from keras.metrics import CategoricalAccuracy, BinaryAccuracy
@@ -28,11 +28,11 @@ figures_dir = Path.cwd().joinpath("figures")
 logs_dir = Path.cwd().joinpath("logs")
 configs_dir = Path.cwd().joinpath("configs")
 data_dir = Path.cwd().joinpath("data")
-classification_data_dir = data_dir.joinpath("classification")
+video_classification_data_dir = data_dir.joinpath("video_classification")
 
 
 c3d_json = configs_dir.joinpath("C3D.json")
-general_json = configs_dir.joinpath("general.json")
+paths_json = configs_dir.joinpath("paths.json")
 
 
 check_dir_exists(checkpoints_dir)
@@ -42,24 +42,24 @@ check_dir_exists(logs_dir)
 
 
 check_file_exists(c3d_json)
-check_file_exists(general_json)
+check_file_exists(paths_json)
 
 
-c3d_config = load_json(c3d_json)
-general_config = load_json(general_json)
+model_config = load_json(c3d_json)
+paths_config = load_json(paths_json)
 
 
-modality = get_modality(c3d_config)
-task = get_task(c3d_config)
-epochs = get_epochs(c3d_config)
-input_shape = get_input_shape(c3d_config)
-output_shape = get_output_shape(c3d_config)
-optimizer = get_optimizer(c3d_config)
-batch_size = get_batch_size(c3d_config)
+modality = get_modality(model_config)
+task = get_task(model_config)
+epochs = get_epochs(model_config)
+input_shape = get_input_shape(model_config)
+output_shape = get_output_shape(model_config)
+optimizer = get_optimizer(model_config)
+batch_size = get_batch_size(model_config)
 
 
-train_csv = classification_data_dir.joinpath(f"{task}_train.csv")
-val_csv = classification_data_dir.joinpath(f"{task}_val.csv")
+train_csv = video_classification_data_dir.joinpath(f"{task}_train.csv")
+val_csv = video_classification_data_dir.joinpath(f"{task}_val.csv")
 
 
 check_file_exists(train_csv)
@@ -67,14 +67,14 @@ check_file_exists(val_csv)
 
 
 # Saved frames to SSD
-frames_dir = Path(general_config["frames_dir"]).joinpath(modality)
+frames_dir = Path(paths_config["frames_dir"]).joinpath(modality)
 
 
 model_name = f"C3D_{task}_{modality}_{epochs}_epochs"
 model_save_path = saved_models_dir.joinpath(model_name)
 
 
-train_gen = get_classification_generator(
+train_gen = get_video_classification_generator(
     train_csv, frames_dir,
     num_frames=input_shape[0], 
     shuffle=True,
@@ -82,7 +82,7 @@ train_gen = get_classification_generator(
 )
 
 
-val_gen = get_classification_generator(
+val_gen = get_video_classification_generator(
     val_csv, frames_dir,
     num_frames=input_shape[0], 
     shuffle=True,
@@ -118,9 +118,9 @@ else:
     
 model = C3D(
     input_shape=input_shape,
-    dropout_pct=get_dropout_rate(c3d_config),
-    num_classes=get_num_classes(c3d_config),
-    linear_units=get_linear_units(c3d_config),
+    dropout_pct=get_dropout_rate(model_config),
+    num_classes=get_num_classes(model_config),
+    linear_units=get_linear_units(model_config),
 )
 model.summary()
 
