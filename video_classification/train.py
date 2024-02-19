@@ -10,7 +10,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger, TensorBoa
 from utils import check_dir_exists, check_file_exists, load_json
 from config_check import (
     get_batch_size,
-    get_dropout,
+    get_dropout_rate,
     get_epochs,
     get_modality,
     get_optimizer,
@@ -118,7 +118,7 @@ else:
     
 model = C3D(
     input_shape=input_shape,
-    dropout_pct=get_dropout(c3d_config),
+    dropout_pct=get_dropout_rate(c3d_config),
     num_classes=get_num_classes(c3d_config),
     linear_units=get_linear_units(c3d_config),
 )

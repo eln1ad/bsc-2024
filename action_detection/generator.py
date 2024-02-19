@@ -7,19 +7,19 @@ import tensorflow as tf
 
 
 # a tensorflow-s generatornak nem lehet parametere, ezért egy nested függvényt írtam
-def action_detection_generator(csv_file, video_features_dir, shuffle=True):
+def get_detection_generator(csv_file, video_features_dir, shuffle=True):
     if not Path(csv_file).exists():
-            raise ValueError("'csv_file' does not exist!")
+            raise ValueError("[ERROR] 'csv_file' does not exist!")
         
     if not Path(video_features_dir).exists():
-        raise ValueError("'video_features_dir' does not exist!")
+        raise ValueError("[ERROR] 'video_features_dir' does not exist!")
     
     # the directory name ends with rgb or flow
     modality = str(Path(video_features_dir).name).lower()
     
     if modality not in ["rgb", "flow"]:
         raise ValueError(
-            "'modality' can only be rgb or flow!\n"
+            "[ERROR] 'modality' can only be rgb or flow!\n"
             "HINT: You might need to rename your directory to rgb or flow!\n"
             "/home/elniad/datasets/boxing/frames/rgb"
         )
@@ -31,12 +31,11 @@ def action_detection_generator(csv_file, video_features_dir, shuffle=True):
             df = df.sample(frac=1).reset_index(drop=True)
         
         for row in df.itertuples(index=False):
-            # start_time = time.time()
-            
             video_name = row[0]
             seg_start, seg_end = int(row[1]), int(row[2])
-            gt_start, gt_end = int(row[3]), int(row[4])
-            gt_label = row[5]
+            label = row[5]
+            delta_center = row[7]
+            delta_length = row[8]
             
             video_dir = Path(video_features_dir).joinpath(video_name)
             
@@ -62,36 +61,24 @@ def action_detection_generator(csv_file, video_features_dir, shuffle=True):
             # 3. l2 normalizáció
             # features = l2_norm(features)
             
-            if gt_label == "action":
-                label = np.array([1.0], dtype=np.float32)
-            else:
-                label = np.array([0.0], dtype=np.float32)
-                
-            # encode center, length
-            gt_length = gt_end - gt_start # not adding 1, because end is exclusive
-            seg_length = seg_end - seg_start
+            # Most semmilyen normalizációt nem használok
+            # features = l2_norm(features)
             
-            gt_center = (gt_end + gt_start) / 2.0
-            seg_center = (seg_end + seg_start) / 2.0
-            
-            if gt_label == "action":
-                delta_center = np.array([(gt_center - seg_center) / seg_length], dtype=np.float32)
-                delta_length = np.array([np.log(gt_length / seg_length)], dtype=np.float32)
-            else:
-                delta_center = np.array([0.0], dtype=np.float32)
-                delta_length = np.array([0.0], dtype=np.float32)
-            
-            yield features, (label, delta_center, delta_length)
+            yield features, (np.array([label]), np.array([delta_center]), np.array([delta_length]))
             
     return generator_func
     
         
 if __name__ == "__main__":
     data_dir = Path.cwd().joinpath("data")
+    detection_data_dir = data_dir.joinpath("detection")
     
-    generator = action_detection_generator(
-        data_dir.joinpath("/home/elniad/bsc-2024/data/train_binary_segments_size_8_stride_1_tiou_high_0.5_tiou_low_0.15.csv"), 
-        "/home/elniad/datasets/boxing/features/rgb",
+    modality = "rgb"
+    features_dir = f"/home/elniad/datasets/boxing/features/{modality}"
+    
+    generator = get_detection_generator(
+        detection_data_dir.joinpath("train.csv"), 
+        features_dir,
         shuffle=True
     )
     
@@ -108,17 +95,15 @@ if __name__ == "__main__":
         generator, 
         output_signature=output_signature).batch(32, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
 
-    for X, y in dataset:
-        print(X.shape)
-        y_label, y_center, y_length = y
+    for i, (x, y) in enumerate(dataset):
+        print(x.shape)
+        label, center, length = y
         # print(y_label.shape)
         # print(y_center.shape)
         # print(y_length.shape)
         # print(y_label)
         # print(y_center)
         # print(y_length)
-        print(np.min(X))
-        print(np.max(X))
-        print(np.max(y_center))
-        print(np.max(y_length))
+        print(label, center, length)
+        print(np.max(x[0]), np.min(x[0]))
         break

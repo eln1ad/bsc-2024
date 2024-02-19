@@ -1,93 +1,102 @@
 from keras.optimizers import SGD, Adam
+    
+    
+def get_modality(config):
+    if config["modality"] not in ["rgb", "flow"]:
+        raise ValueError("[ERROR] 'modality' can only be 'rgb' or 'flow', modify config!")
+    return config["modality"]
 
 
-def get_modality(c3d_config):
-    if c3d_config["color-channels"] == 2:
-        return "flow"
-    elif c3d_config["color-channels"] == 3:
-        return "rgb"
-    else:
-        raise ValueError("[ERROR] 'color-channels' can only be 2 or 3, modify the config file!")
+def get_color_channels(config):
+    modality = get_modality(config)
+    if modality == "rgb":
+        return 3
+    if modality == "flow":
+        return 2
 
    
-def get_task(c3d_config):
-    if c3d_config["task"] not in ["binary", "multi"]:
+def get_task(config):
+    if config["task"] not in ["binary", "multi"]:
         raise ValueError("[ERROR] 'task' can only be 'binary' or 'multi', modify the config file!")
-    return c3d_config["task"]
+    return config["task"]
 
 
-def get_num_classes(c3d_config):
-    if c3d_config["num-classes"] <= 0:
-        raise ValueError("[ERROR] 'num-classes' must be greater than 0, modify the config file!")
-    return c3d_config["num-classes"]
+def get_num_classes(config):
+    task = get_task(config)
+    if config["num_classes"] <= 0:
+        raise ValueError("[ERROR] 'num_classes' must be greater than 0, modify config!")
+    if task == "binary":
+        return 2
+    return config["num-classes"] # last option is that task is 'multi'
 
 
-def get_input_shape(c3d_config):
-    l = c3d_config["capacity"]
-    w = c3d_config["image-width"]
-    h = c3d_config["image-height"]
-    c = c3d_config["color-channels"]
+def get_input_shape(config):
+    l = config["capacity"]
+    w = config["image_width"]
+    h = config["image_height"]
+    c = get_color_channels(config)
     
     if l < 8 or l > 16:
-        raise ValueError("[ERROR] 'capacity' must be between 8 and 16, modify the config file!")
+        raise ValueError("[ERROR] 'capacity' must be between 8 and 16, modify config!")
     if (w < 96 or w > 224) and (h < 96 or h > 224) and w != h:
         raise ValueError(
             "[ERROR] use spatial dimensions with shape (N, N), where\n"
-            "N is >= 96 and <= 224, modify the config file!"
+            "N is >= 96 and <= 224, modify config!"
         )
-    if c not in [2, 3]:
-        raise ValueError("[ERROR] 'color-channels' must be 2 or 3, modify the config file!")
     
     return (l, w, h, c)
 
 
-def get_output_shape(c3d_config):
-    if get_task(c3d_config) == "binary":
+def get_output_shape(config):
+    if get_task(config) == "binary":
         return (1,)
     else:
-        return (get_num_classes(c3d_config),)   
+        return (get_num_classes(config),)
 
 
 def get_epochs(c3d_config):
     if c3d_config["epochs"] < 0:
-        raise ValueError("[ERROR] 'epochs' must be greater than 0, modify the config file!")
+        raise ValueError("[ERROR] 'epochs' must be greater than 0, modify config!")
     return c3d_config["epochs"]
 
 
-def get_optimizer(c3d_config):
-    optimizer = c3d_config["optimizer"].lower()
-    learning_rate = c3d_config["learning-rate"]
+def get_learning_rate(config):
+    if config["learning_rate"] <= 0 and config["learning_rate"] > 0.5:
+        raise ValueError("[ERROR] 'learning_rate' must be in the range of ]0, 0.5], modify config!")
+    return config["learning_rate"]
+
+
+def get_optimizer(config):
+    learning_rate = get_learning_rate(config)
+    optimizer = config["optimizer"].lower()
     
     if optimizer not in ["adam", "sgd"]:
-        raise ValueError(f"[ERROR] Only Adam and SGD optimizers are allowed, modify the config file!")
-    if learning_rate > 0.1:
-        raise ValueError(f"[ERROR] 'learning-rate' is too high, modify the config file!")
+        raise ValueError(f"[ERROR] 'optimizer' must be 'adam' or 'sgd', modify config!")
     if optimizer == "adam":
         return Adam(learning_rate=learning_rate)
     if optimizer == "sgd":
         return SGD(learning_rate=learning_rate)
     
     
-def get_batch_size(c3d_config):
-    batch_size = c3d_config["batch-size"]
-    if batch_size <= 0:
-        raise ValueError("[ERROR] 'batch-size' must be greater than 0, modify the config file!")
-    if not batch_size % 2 == 0:
-        raise ValueError("[ERROR] 'batch-size' must be divisable by 2, modify the config file!")
-    return batch_size
+def get_batch_size(config):
+    if config["batch_size"] <= 0:
+        raise ValueError("[ERROR] 'batch_size' must be greater than 0, modify config!")
+    if not config["batch_size"] % 2 == 0:
+        raise ValueError("[ERROR] 'batch_size' must be divisable by 2, modify config!")
+    return config["batch_size"]
 
 
-def get_dropout(c3d_config):
-    dropout_pct = c3d_config["dropout-pct"]
-    if not isinstance(dropout_pct, float):
-        raise ValueError("[ERROR] 'dropout-pct' must be a float, modify the config file!")
-    if dropout_pct <= 0 or dropout_pct >= 1:
-        raise ValueError("[ERROR] keep 'dropout-pct' between ]0,1[!")
-    return dropout_pct
+def get_dropout_rate(config):
+    dropout_rate = config["dropout_rate"]
+    if not isinstance(dropout_rate, float):
+        raise ValueError("[ERROR] 'dropout_rate' must be a float, modify config!")
+    if dropout_rate <= 0 or dropout_rate >= 1:
+        raise ValueError("[ERROR] 'dropout_rate' must be in the range of ]0.0, 1.0[, modify config!")
+    return dropout_rate
 
 
 def get_linear_units(c3d_config):
-    linear_units = c3d_config["linear-units"]
+    linear_units = c3d_config["linear_units"]
     if linear_units <= 0:
-        raise ValueError("[ERROR] 'linear-units' must be greater than 0, modify the config file!")
+        raise ValueError("[ERROR] 'linear_units' must be greater than 0, modify config!")
     return linear_units
