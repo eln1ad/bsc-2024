@@ -94,7 +94,8 @@ if __name__ == "__main__":
         action_classification_data_dir.joinpath("train.csv"),
         action_classification_data_dir.joinpath("label_list.txt"),
         features_dir,
-        shuffle=True
+        shuffle=True,
+        norm_method=None,
     )
     
     num_labels = len(load_label_list(action_classification_data_dir.joinpath("label_list.txt")))
