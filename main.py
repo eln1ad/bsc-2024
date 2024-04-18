@@ -75,25 +75,27 @@ def NMS(segments, confidences, tiou_threshold=0.2):
 
     # return indices of filtered segments
     return filtered
-    
 
-if __name__ == "__main__":
+
+def pipeline(video_path: Path, nms_threshold: float = 0.2):
+    """
+    Returns predictions as Nx4 matrix.
+    
+    0: start (int)
+    1: end (int)
+    2: confidence (float)
+    3: label (str)
+    """
     configs_dir = Path.cwd().joinpath("configs")
     c3d_config = load_json(configs_dir.joinpath("C3D.json"))
     paths_config = load_json(configs_dir.joinpath("paths.json"))
     action_detector_config = load_json(configs_dir.joinpath("action_detector.json"))
     action_classifier_config = load_json(configs_dir.joinpath("action_classifier.json"))
     
-    
-    video_name = "video_000351.mp4"
     frame_size = (c3d_config["image_width"], c3d_config["image_height"])
-    capacity = c3d_config["capacity"]
     modality = c3d_config["modality"]
-    nms_threshold = 0.2
-    
     
     saved_models_dir = Path.cwd().joinpath("saved_models")
-    video_path = Path(paths_config["videos_dir"]).joinpath(video_name)
     
     frames = get_rgb_frames(str(video_path), frame_size)
     
@@ -106,8 +108,6 @@ if __name__ == "__main__":
     action_classifier_name = f"action_classifier_{modality}_50_epochs"
     action_classifier = keras.models.load_model(saved_models_dir.joinpath(action_classifier_name))
     
-    
-    # window_size used for extracting features
     window_size = c3d_config["capacity"]
     window_stride = 1
     
@@ -183,9 +183,124 @@ if __name__ == "__main__":
     indices = NMS(predictions[:, :2].astype(float), predictions[:, 2].astype(float), tiou_threshold=nms_threshold)
     predictions = predictions[indices]
     
-    for prediction in predictions:
-        pred_label = prediction[3]
-        pred_start, pred_end = prediction[0], prediction[1]
-        pred_confidence = prediction[2]
-        print(f">>> PREDICTION FOR {Path(video_name).stem} <<<")
-        print(f"label: {pred_label}, confidence: {pred_confidence}, start: {pred_start}, end: {pred_end}\n")
+    # casting columns
+    # must be converted to float, then int, otherwise an error will be thrown: https://stackoverflow.com/questions/1841565/valueerror-invalid-literal-for-int-with-base-10
+    predictions[:, 0] = predictions[:, 0].astype(dtype=np.float64).astype(dtype=np.int64)
+    predictions[:, 1] = predictions[:, 1].astype(dtype=np.float64).astype(dtype=np.int64)
+    predictions[:, 2] = predictions[:, 2].astype(dtype=np.float64)
+    
+    return predictions.tolist()
+    
+
+# if __name__ == "__main__":
+#     configs_dir = Path.cwd().joinpath("configs")
+#     c3d_config = load_json(configs_dir.joinpath("C3D.json"))
+#     paths_config = load_json(configs_dir.joinpath("paths.json"))
+#     action_detector_config = load_json(configs_dir.joinpath("action_detector.json"))
+#     action_classifier_config = load_json(configs_dir.joinpath("action_classifier.json"))
+    
+    
+#     video_name = "video_000351.mp4"
+#     frame_size = (c3d_config["image_width"], c3d_config["image_height"])
+#     capacity = c3d_config["capacity"]
+#     modality = c3d_config["modality"]
+#     nms_threshold = 0.2
+    
+    
+#     saved_models_dir = Path.cwd().joinpath("saved_models")
+#     video_path = Path(paths_config["videos_dir"]).joinpath(video_name)
+    
+#     frames = get_rgb_frames(str(video_path), frame_size)
+    
+#     video_classifier_name = f"C3D_binary_{modality}_10_epochs"
+#     feature_extractor = get_feature_extractor(video_classifier_name)
+    
+#     action_detector_name = f"action_detector_{modality}_50_epochs"
+#     action_detector = keras.models.load_model(saved_models_dir.joinpath(action_detector_name))
+    
+#     action_classifier_name = f"action_classifier_{modality}_50_epochs"
+#     action_classifier = keras.models.load_model(saved_models_dir.joinpath(action_classifier_name))
+    
+    
+#     # window_size used for extracting features
+#     window_size = c3d_config["capacity"]
+#     window_stride = 1
+    
+#     features_dict = {}
+    
+#     label_list_txt = Path.cwd().joinpath("data", "action_classification", "label_list.txt")
+#     label_list = load_label_list(label_list_txt)
+    
+#     for i in range(0, frames.shape[0] - window_size + 1, window_stride):
+#         start = i * window_stride
+#         end = start + window_size
+#         indices = np.arange(start, end)
+#         input_batch = np.expand_dims(frames[indices], axis=0)
+#         features = feature_extractor(input_batch)[0]
+        
+#         features_dict[f"{start}_{end}"] = features
+        
+#     window_sizes = [8, 10, 12, 14, 16]
+#     window_intervals = get_window_intervals(frames.shape[0], sizes=window_sizes, overlap=0.8)
+    
+#     predictions = []
+    
+#     for window_interval in window_intervals:
+#         # Load in corresponding features
+#         window_features = []
+#         for k in features_dict.keys():
+#             parts = k.split("_")
+#             start, end = int(parts[0]), int(parts[1])
+#             if window_interval[0] <= start and end <= window_interval[1]:
+#                 window_features.append(features_dict[k])
+#         window_features = np.average(window_features, axis=0)
+#         window_features = np.expand_dims(window_features, axis=0)
+#         # Use the features as input to the action_detector
+#         pred = action_detector(window_features)
+#         pred_label, pred_center, pred_length = float(pred[0][0].numpy()), float(pred[1][0].numpy()), float(pred[2][0].numpy())
+#         # Do nothing if background
+#         if pred_label <= 0.5:
+#             continue
+#         # Use the regressed coordinates to calculate new window
+#         # Load in the features with the new coordinates and predict class
+#         else:
+#             window_length = window_interval[1] - window_interval[0]
+#             window_center = (window_interval[1] + window_interval[0]) / 2.0
+            
+#             pred_center = pred_center * window_length + window_center
+#             pred_length = np.exp(pred_length) * window_length
+            
+#             pred_start = np.round(pred_center - pred_length / 2.0)
+#             pred_start = np.clip(pred_start, a_min=0, a_max=window_interval[0])
+            
+#             pred_end = np.round(pred_center + pred_length / 2.0)
+#             pred_end = np.clip(pred_end, a_min=0, a_max=window_interval[1])
+            
+#             window_features = []
+            
+#             for k in features_dict.keys():
+#                 parts = k.split("_")
+#                 start, end = int(parts[0]), int(parts[1])
+#                 if pred_start <= start and end <= pred_end:
+#                     window_features.append(features_dict[k])
+            
+#             window_features = np.average(window_features, axis=0)
+#             window_features = np.expand_dims(window_features, axis=0)
+            
+#             pred = action_classifier(window_features)[0]
+#             pred_confidence = round(np.max(pred), 4)
+#             pred_label = label_list[np.argmax(pred)]
+            
+#             predictions.append([pred_start, pred_end, pred_confidence, pred_label])
+            
+#     predictions = np.array(predictions)
+#     # casting is needed, because there is a string column inside predictions
+#     indices = NMS(predictions[:, :2].astype(float), predictions[:, 2].astype(float), tiou_threshold=nms_threshold)
+#     predictions = predictions[indices]
+    
+#     for prediction in predictions:
+#         pred_label = prediction[3]
+#         pred_start, pred_end = prediction[0], prediction[1]
+#         pred_confidence = prediction[2]
+#         print(f">>> PREDICTION FOR {Path(video_name).stem} <<<")
+#         print(f"label: {pred_label}, confidence: {pred_confidence}, start: {pred_start}, end: {pred_end}\n")
